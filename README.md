@@ -1,126 +1,94 @@
-# nanoGPT from Scratch and KV Cache Performance Study
+# nanoGPT + KV Cache ⚡
 
-An educational, character-level GPT project developed while following Andrej
-Karpathy's *Let's build GPT: from scratch, in code, spelled out*. The project
-has two parts:
+> A small NLP course project: build a decoder-only Transformer from scratch,
+> then find out when KV Cache actually makes generation faster.
 
-1. a small decoder-only Transformer trained on the Tiny Shakespeare corpus;
-2. a later course study of how KV caching affects autoregressive inference time
-   and peak GPU memory under different sequence lengths and batch sizes.
+I first followed Andrej Karpathy's GPT tutorial to understand each part of the
+model—token embeddings, masked self-attention, multi-head attention, residual
+connections and feed-forward blocks. I then added KV caching and compared it
+with full-context recomputation under different sequence lengths and batch
+sizes.
 
-The repository keeps the implementation, presentation, and experiment figures
-together while distinguishing what is currently reproducible from what is
-preserved as a course-work record.
+![KV Cache speedup](results/figures/speedup_vs_seq_batch16.png)
 
-## Project status
+## What I built
 
-| Component | Status |
-| --- | --- |
-| Character-level decoder-only Transformer | Source code included |
-| Training and text generation | Source code and dataset included |
-| KV-cache performance analysis | Presentation and figures included |
-| KV-cache benchmark implementation and raw logs | Not currently included |
+- a character-level decoder-only Transformer in PyTorch;
+- two inference paths: **with** and **without** KV Cache;
+- cache reset, position-offset and context-length handling;
+- a CUDA benchmark for latency and peak memory;
+- plots for time, memory and time–memory trade-offs.
 
-The supplied local `KVcache.py` was byte-identical to the baseline `train.py`
-and did not contain cache-aware inference. It has therefore not been presented
-as a KV-cache implementation. The numerical results in the presentation should
-be treated as documented course-project results rather than a fully
-reproducible benchmark until the original server-side code and logs are added.
+## Experiment
 
-## Baseline model
+Each configuration was repeated 10 times using a randomly initialized model.
+The benchmark compares sequence lengths `128 / 512 / 1024`, batch sizes `1 / 16`,
+and 50 generated tokens per run.
 
-The baseline implements the main components of a compact GPT-style language
-model in PyTorch:
+| Batch | Sequence length | Speedup (no-KV / KV) |
+| ---: | ---: | ---: |
+| 1 | 128 | 0.84× |
+| 1 | 512 | 0.85× |
+| 1 | 1024 | 0.97× |
+| 16 | 128 | 1.21× |
+| 16 | 512 | 3.80× |
+| 16 | 1024 | **9.24×** |
 
-- character-level tokenization;
-- token and positional embeddings;
-- masked single-head and multi-head self-attention;
-- feed-forward layers, residual connections, layer normalization, and dropout;
-- next-token training and autoregressive text generation.
+In this setup, cache-management overhead outweighed the benefit for batch size
+1, while longer sequences with batch size 16 showed a clear speedup. The
+recorded peak-memory result was also lower with KV Cache during generation,
+because full-context attention repeatedly created larger intermediate
+activations. These results describe this course experiment rather than a
+general hardware-independent benchmark.
 
-This is an educational implementation built step by step from Karpathy's
-lecture, not a claim of an independently invented architecture.
+Raw results: [`benchmark_summary.csv`](results/benchmark_summary.csv) ·
+[all figures](results/figures/) ·
+[course presentation (12 Dec 2025)](docs/KV_Cache_Performance_Analysis_2025-12-12.pptx)
 
-## KV-cache study
-
-The follow-up study asks two questions:
-
-1. Under what sequence-length and batch-size settings does KV caching provide
-   the clearest inference-time improvement?
-2. How does caching affect peak memory during priming and token generation?
-
-The course presentation reports experiments across multiple sequence lengths
-and batch sizes, with repeated runs for each configuration. It records that
-larger batches and longer contexts benefited most in the tested setting, while
-small-batch overhead could offset the benefit. It also separates the memory
-cost of storing keys and values from the activation cost avoided during
-generation.
-
-The original presentation is preserved unchanged at
-[`docs/KV_Cache_Performance_Analysis_2025-12-12.pptx`](docs/KV_Cache_Performance_Analysis_2025-12-12.pptx).
-Its title slide records the student name, class, and presentation date of
-12 December 2025. A historical repository URL shown in the slides was a planned
-project location and is not the current repository URL.
-
-## Repository layout
-
-```text
-.
-├── train.py                         # baseline Transformer training script
-├── input.txt                        # Tiny Shakespeare training text
-├── requirements.txt
-├── docs/
-│   ├── KV_Cache_Performance_Analysis_2025-12-12.pptx
-│   └── figures/                     # plots used in the performance analysis
-└── nanoGPT-project/                 # files retained from the original upload
-```
-
-The `nanoGPT-project/` directory and the earlier report files are retained to
-preserve the repository's original history. The root-level files provide the
-clean entry point for the reorganized version.
-
-## Running the baseline
-
-Python 3.10 or later is recommended.
+## Run it
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python train.py
+
+# Check the available GPU
+python check_gpu.py
+
+# Run the KV Cache benchmark
+python benchmark_kv_cache.py --device cuda --vocab-size 5000 --generate-steps 50
 ```
 
-The script trains from scratch and then samples generated text. Its default
-configuration is deliberately small and can run on CPU, although training may
-take time. The script expects `input.txt` in the repository root.
+To train the character-level model on the included Shakespeare corpus:
 
-## Reproducibility notes
+```bash
+python train_without_kvcache.py
+# or
+python train_with_kvcache.py
+```
 
-- The random seed is fixed in `train.py`.
-- The baseline script is preserved close to the submitted course-project
-  version instead of being retrospectively rewritten.
-- Exact KV-cache numbers require the original benchmark code, hardware setup,
-  and raw logs, which are not currently available in this repository.
-- No pretrained weights or checkpoints are included.
+## Project map
 
-## Timeline
+```text
+config.py                     model and experiment settings
+model_with_kvcache.py         decoder with per-head K/V buffers
+model_without_kvcache.py      full-context baseline
+benchmark_kv_cache.py         latency and peak-memory benchmark
+train_*.py                    training scripts
+analysis/                     plotting and trade-off analysis
+results/                      CSV results and generated figures
+docs/                         presentation and model notes
+nanoGPT-project/              files preserved from my first 2024 upload
+```
 
-- **June 2024:** baseline GPT implementation, diagrams, and intermediate
-  screenshots recorded in the original upload.
-- **12 December 2025:** KV-cache performance-analysis presentation completed.
+## Notes
 
-## Attribution
+- The baseline was written step by step while following Karpathy's
+  [GPT-from-scratch lecture](https://www.youtube.com/watch?v=kCc8FmEb1nY) and
+  [`karpathy/nanoGPT`](https://github.com/karpathy/nanoGPT).
+- The repository does not include checkpoints or the local virtual environment.
+- The CSV files and presentation preserve the results from the original course
+  run; they were not re-benchmarked on the machine used to reorganize this repo.
 
-The baseline was developed as a learning exercise alongside:
-
-- Andrej Karpathy, [*Let's build GPT: from scratch, in code, spelled
-  out*](https://www.youtube.com/watch?v=kCc8FmEb1nY)
-- Andrej Karpathy, [`karpathy/nanoGPT`](https://github.com/karpathy/nanoGPT)
-
-Additional references used for the KV-cache study are listed in the
-presentation.
-
-## Author
-
-Jiayin Tian, Xi'an Jiaotong University
+**Jiayin Tian · Xi'an Jiaotong University · NLP course project, 2025**
 
