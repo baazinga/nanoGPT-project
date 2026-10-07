@@ -45,7 +45,7 @@ Raw results: [`benchmark_summary.csv`](results/benchmark_summary.csv) ·
 [all figures](results/figures/) ·
 [course presentation (12 Dec 2025)](docs/KV_Cache_Performance_Analysis_2025-12-12.pptx)
 
-## Run it
+## Run
 
 ```bash
 python -m venv .venv
@@ -86,9 +86,8 @@ nanoGPT-project/              files preserved from my first 2024 upload
 - The baseline was written step by step while following Karpathy's
   [GPT-from-scratch lecture](https://www.youtube.com/watch?v=kCc8FmEb1nY) and
   [`karpathy/nanoGPT`](https://github.com/karpathy/nanoGPT).
-- The repository does not include checkpoints or the local virtual environment.
 - The CSV files and presentation preserve the results from the original course
   run; they were not re-benchmarked on the machine used to reorganize this repo.
 
-**Jiayin Tian · Xi'an Jiaotong University · NLP course project, 2025**
+**NLP course project, 2025**
 
