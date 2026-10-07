@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Model artifacts and local experiment outputs
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+runs/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
